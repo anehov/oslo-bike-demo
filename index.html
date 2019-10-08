@@ -1,0 +1,72 @@
+<!doctype html><meta charset=utf-8>
+<head>
+  <title>Sykkelstativer i Oslo</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet" type="text/css">
+  <link href="style.css" rel="stylesheet" type="text/css">
+
+  <!-- Leaflet libs -->
+  <script src="https://unpkg.com/leaflet@1.5.1/dist/leaflet.js" integrity="sha512-GffPMF3RvMeYyc1LWMHtK8EbPv0iNZ8/oTtHPx9/cc2ILxQ+u905qIwdpULaqDkyBKgOaB57QTMg7ztg8Jm2Og==" crossorigin=""></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.5.1/dist/leaflet.css" integrity="sha512-xwE/Az9zrjBIphAcBb3F6JVqxf46+CDLwfLMHloNu6KEQCAWi6HcDUbeOfBIptF7tcCzusKFjFw2yuvEpDL9wQ==" crossorigin=""/>
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css" />
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css" />
+
+</head>
+<body>
+
+  <h1>Sykkelstativer i Oslo</h1>
+  <div id=status>Loading..</div>
+  <div id=map></div>
+
+  <script type="module">
+    import { fetchJSON } from './modules/fetchJSON.mjs';
+    import { joinStationData } from './modules/joinStationData.mjs';
+
+    const statusField = document.getElementById('status');
+
+    // Init map and center on Oslo.
+    let map = L.map('map', {
+      center: [59.9139, 10.7522],
+      zoom: 12,
+    });
+
+    // Setup standard city map style tiles from OpenStreetMap.
+    L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+      attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+      maxZoom: 18,
+      id: 'mapbox.streets',
+      accessToken: 'pk.eyJ1IjoiYW5laG4iLCJhIjoiY2sxYzM1MTdjMHAycDNubnZyN293ZTRvdSJ9.djINqsalZ7sG1mMpvipv1Q'
+    }).addTo(map);
+
+    function placeStationMarkers(stations) {
+        let markers = L.markerClusterGroup();
+        for (let { name, lat, lon, docks, bikes } of stations) {
+          markers.addLayer(
+            L.marker([lat, lon])
+              .bindPopup(`<b>${name}</b>` +
+                         `<br>Ledige låser: ${docks}` +
+                         `<br>Ledige sykler: ${bikes}`)
+              .on('mouseover', function (e) { this.openPopup(); })
+              .on('mouseout', function (e) { this.closePopup(); })
+              .on('click', function (e) { this.openPopup(); })
+          );
+        }
+        map.addLayer(markers);
+    }
+
+    (async function () {
+      try {
+        const stationInformation = await fetchJSON('https://gbfs.urbansharing.com/oslobysykkel.no/station_information.json');
+        const stationStatus = await fetchJSON('https://gbfs.urbansharing.com/oslobysykkel.no/station_status.json');
+        const stations = joinStationData(stationInformation, stationStatus);
+        placeStationMarkers(stations);
+        statusField.textContent = '';
+      } catch(e) {
+        // For some reason the type of the error fetch will throw on network error is TypeError.
+        if(!e instanceof TypeError) throw e;
+        statusField.textContent = `Failed to fetch info from server. Maybe it will fix itself? Try again soon. ${e}.`;
+      }
+    })();
+  </script>
+</body>

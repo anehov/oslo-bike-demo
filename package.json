@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "test": "tape -r esm 'tests/*.test.js' | tap-spec",
+    "serve": "http-server -a localhost"
+  },
+  "dependencies": {
+    "esm": "^3.2.25",
+    "fetch-mock": "^7.5.1",
+    "http-server": "^0.11.1",
+    "node-fetch": "^2.6.0",
+    "tap-spec": "^5.0.0",
+    "tape": "^4.11.0"
+  }
+}
